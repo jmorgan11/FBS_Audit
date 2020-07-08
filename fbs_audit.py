@@ -1,71 +1,104 @@
-1. Start a new GIS project.
-2. Load all applicable digital data into the GIS Project.
-3. Build a study level TIN = TIN_STUDYX using the digital terrain information. If the
-study terrain data is non-digital, the terrain maps will have to be scanned and
-georeferenced so that ground elevations can be assigned to the points by hand.
-4. Extract the Zone A 1-percent annual flood lines and export them to a new
-shapefile/feature class = APPROX_FLD_HAZ_LN_STUDYX and add the new file
-to the GIS project.
-5. Extract the Zone A 1-percent annual flood polygons and export them to a new
-shapefile/feature class = APPROX_FLD_HAZ_PLY_STUDYX and add the new
-file to the GIS project.
-6. Clip the S_WTR_LN with the APPROX_FLD_HAZ_PLY_STUDYX polygon
-feature to create a new APPROX_WTR_LN shapefile/feature class.
-7. Note: If there is no S_WTR_LN in the ZONE A areas, one will have to be created
-manually using the base map information before the clipping can occur.
-8. Using the APPROX_WTR_LN file, create a new point shapefile/feature class =
-A_WTR_PTS_STUDYX, which has points that are evenly spaced along the
-APPROX_WTR_LN (every 500ft) and add the TEST_PTS_STUDYX to the GIS
-project.
-9. Create a new line shapefile/feature class, audit cross-section lines
-(A_XS_STUDYX), by drawing audit cross sections perpendicular to
-APPROX_WTR_LN at the A_WTR_PTS_STUDYX.
-10. Assign every A_XS_STUDYX a unique ID.
-11. Intersect the A_XS_STUDYXs with the APPROX_FLD_HAZ_LN_STUDYX and
-use the intersection points of the two to create a new point shapefile/feature
-class AUDIT_STUDYX_PTS being sure to transfer the A_XS_STUDYXs unique
-IDs to the AUDIT_STUDYX_PTS.
-12. Add the following fields to the TEST_PTS_STUDYX attribute table.
-a. GrELEV1 – type = numeric, 6, 2
-b. GrELEV2 – type = numeric, 6, 2
-c. ElevDIFF – type = numeric, 6, 2
-d. RiskClass – type = string, length = 2
-e. Status – type = string, length = 2
-f. Validation – type = string, length = 20
-g. Comment – type = string, length = 100
-13. Intersect AUDIT_STUDYX_PTS with the TIN_STUDYX to transfer the
-interpolated terrain elevations onto the AUDIT_STUDYX_PTS GrdELEV attribute
-field.
-14. Note: If terrain was not available in digital format, terrain elevations will have to
-be assigned by hand from the georeferenced terrain maps.
-15. Break the resulting AUDIT_STUDYX_PTS into two new shapefile/feature class
-by doing a unique selection on the attribute XS_ID field and export the first
-selection to AUDIT_STUDYX_PTS1, reverse the selection and export the second
-selection to AUDIT_STUDYX_PTS2.
-16. Do a table join of AUDIT_STUDYX_PTS2 to AUDIT_STUDYX_PTS1.
-17. Calculate the ElevDIFF of AUDIT_STUDYX_PTS1 by subtracting GrELEV1 from
-GrELEV2.
-18. Determine if the AUDIT_STUDYX_PTS1 passes the equal to or greater than the
-95-percent pass percentage at the +/- ½ contour threshold; if so, then the study
-passes and no more analysis is necessary, skip to Step 27.
-19. If the AUDIT_STUDYX_PTS1 fails the equal to or greater than the 95-percent
-pass percentage at the +/- ½ contour threshold, then intersect the
-AUDIT_STUDYX_PTS1 with the X_RiskClassifications shapefile to transfer the
-Risk Classes onto the AUDIT_STUDYX_PTS1.
-20. Determine the status of each point based on tolerances of its risk class and
-calculate into the Status field the attribute Pass = “P” and Fail = “F”.
-21. Select out the individual Risk Classes to their own
-AUDIT_STUDYX_PTS1_RskClass shapefile/feature.
-22. Determine the pass rate for each audit study’s risk class, if the study now passes
-at the Risk Class level, no more analysis is necessary, skip to Step 27.
-23. If the AUDIT_STUDYX_PTS fails the equal to or greater than pass rate for each
-audit study’s risk classes then intersect the AUDIT_STUDYX_PTS with the NHD
-100k subbasin shapefile.
-24. Add new filed attribute to the AUDIT_STUDYX_PTS file.
-a. Subbasin – type = string, length = 50
-25. Calculate the Subbassin field in the AUDIT_STUDYX_PTS file with the
-intersected NHD 100k subbasin shapefile.
-26. Now determine the AUDIT_STUDYX_PTS pass rate for each audit study’s risk
-classes at the subbasin level.
-27. Record/Report Results in FBS Self-Certification Report.
-28. Submit FBS Self-Certification Report along with the spatial files to the MIP
+# TODO: Check for spatial analyst license
+
+# TODO: Create an empty File Geodatabase
+
+# TODO: Get the spatial reference system
+
+# TODO: Get the unit of measurement vertically and horizontally
+
+# TODO: Load all applicable digital data into the GIS Project.
+#   - S_FLD_HAZ_LN
+#       - Check that LN_TYP is attributed
+#       - Check for multipart features
+#       - Run repair geometry
+#   - S_FLD_HAZ_AR
+#       - Check FLD_ZONE is attributed
+#       - Check ZONE_SUBTY is attributed
+#       - Check for multipart features
+#       - Run repair geometry
+#   - S_Profil_Basln (needed for mileage)
+#       - Check for Unique Names
+#       - Check STUDY_TYP is attributed
+#       - Check WTR_NM is attributed
+#       - Check for multipart features
+#       - Run repair geometry
+#   - S_XS
+#       - WTR_NM is attributed
+#       - WSEL_REG is attrubted
+#       - Check for multipart features
+#       - Run repair geometry
+#   - S_GEN_STRUCT - (Optional)
+#   - S_TRNSPORT_LN (or aerials) - (Optional)
+#   - Terrain Data (WSEL / TIN)
+
+# TODO: Verify everything is in the same projection (reproject or fail)
+
+#                            Zone A RUN
+# --------------------------------------------------------------------------------
+# TODO: Create the APPROX_FLD_HAZ_LN_STUDY feature class
+#   - Select all Zone A polygons
+#   - Select all flood lines that share a boundary with selected polygons
+#   - Remove all selected flood lines that share a boundary with Zone AE polygons
+#   - Copy the remaing lines to the new feature class
+
+# TODO: Create the APPROX_FLD_HAZ_PLY_STUDY feature class
+#   - Select all the Zone A polygons
+#   - Copy them to the new feature class
+
+# TODO: Create the APPROX_PROFIL_BASLN
+#   - Select all Profile Baselines with an Approximate Study Type
+#   - Copy them to the new feature class
+
+# TODO: Create the A_XS_STUDY feature class
+#   - Select all the cross sections that intersect the APPROX_PROFIL_BASLN and have
+#     the same WTR_NM
+#   - Copy them to the new feature class
+
+# TODO: Create the APPROX_TEST_PTS_STUDY feature class
+#   - Create points every 100 ft along the APPROX_FLD_LN_STUDY feature class
+
+# TODO: Add the following fields to the APPROX_TEST_PTS_STUDY attribute table.
+#     a. WTR_NM_1   - String, length = 100
+#     b. WTR_NM_2   - String, length = 100
+#     c. FldELEV    – Numeric, 6, 2
+#     d. MinElev    - Numeric, 6, 2
+#     e. MaxElev    - Numeric, 6, 2
+#     f. GrELEV     – Numeric, 6, 2
+#     g. ElevDIFF   – Numeric, 6, 2
+#     h. RiskClass  – String, length = 2
+#     i. Tolerance  - Numeric, 6, 2
+#     j. Status     – String, length = 2
+#     k. Validation – String, length = 20
+#     l. Comment    – String, length = 100
+
+# TODO: Calculate the RiskClass to A for everything
+
+# TODO: Calculate the Tolerance
+
+# TODO: Add ground elevation values to APPROX_TEST_PTS_STUDY from the DEM
+#   - Use Add Surface Information
+#   - Values stored in GrdELEV field
+
+# TODO: Add WSEL elevation values to APPROX_TEST_PTS_STUDY from the WSEL Grid
+#   - Use Add Surface Information
+#   - Values stored in FldELEV field
+
+# TODO: Check if ABS(FldELEV - GrELEV) <= 1.0
+#   - If so, mark status as 'Pass'
+#   - else, mark status as 'Fail'
+
+# TODO: For each point that Fails, recheck with 38 foot horizontal tolerance
+#   - Create a buffer for the point at 38 feet
+#   - Get the max and min values from DEM within the buffer
+#       - Populate the MinElev
+#       - Populate the MaxElev
+#   - Check if the Fld_Elev is within the MinElev and MaxElev values,
+#     set to 'Pass'
+
+# TODO: Attribute the WTR_NM_1 field in APPROX_TEST_PTS_STUDY
+#   - Create a bounding box for each stream
+#   - Select all points that fall into each box
+#   - Update the WTR_NM_1 field with the box's WTR_NM field
+#       - If WTR_NM_1 is populated, put the value in WTR_NM2
+
+# TODO: Output Report
