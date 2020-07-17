@@ -2,10 +2,10 @@
 from fbs_audit import FbsAudit
 
 # Get user input
-dem = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\Terrain\ter'
+dem = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\Terrain\terrain.tif'
 db = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\FBS_Audit_Development.gdb'
 outfolder = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\Output'
-wsel = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\WSEL\WSE_01pct.tif'
+wsel = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\WSEL\WSEL_Clipped\wsel_clipped.tif'
 
 # Create an instance of the class and run it
 print("Starting....\n")
@@ -26,8 +26,12 @@ fbs_audit = FbsAudit(dem, wsel, db, outfolder)
 ##fbs_audit.add_wsel_elevations_points()
 ##print("Calculate differences")
 ##fbs_audit.calc_difference()
-print("Second Pass")
-fbs_audit.check_failed_points()
+##print("Second Pass")
+##fbs_audit.check_failed_points()
 ##print("Calculate Max/Min value")
 ##fbs_audit.add_ground_elevations_area()
+print("Adding Water Names to Test_Points")
+fbs_audit.assign_water_names()
+##print("Cleanup")
+##fbs_audit.cleanup()
 print("\nAll Done")
