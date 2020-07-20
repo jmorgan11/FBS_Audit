@@ -274,7 +274,7 @@ class FbsAudit:
         arcpy.CalculateField_management(test_points_lyr, "RiskClass", "\"A\"", "PYTHON_9.3")
 
         # Calculate the Tolerance
-        arcpy.CalculateField_management(test_points_lyr, "Tolerance", "0.5", "PYTHON_9.3")
+        arcpy.CalculateField_management(test_points_lyr, "Tolerance", "1", "PYTHON_9.3")
 
     def add_ground_elevations_points(self):
         """Add ground elevation values from the DEM to Test_Points feature class"""
@@ -372,7 +372,7 @@ class FbsAudit:
                 tolerance = update_row[6]
                 status = update_row[7]
 
-                # If FldElev != -9999 and GrElev == -9999: FAIL
+                # If FldElev != -9999 and GrElev == -9999: Unknown
                 if fld_elev != -9999 and gr_elev == -9999:
                     update_row[4] = -9999
                     update_row[7] = "U"
@@ -468,25 +468,25 @@ class FbsAudit:
             points_null = arcpy.MakeFeatureLayer_management(
                 self.outfolder + '\\FBS_Audit.gdb\\Test_Points', "points_null",
                 "WTR_NM_1 IS NULL")
-            
+
             points_sel = arcpy.SelectLayerByLocation_management(
                 points_null, "INTERSECT", self.outfolder + '\\FBS_Audit.gdb\\bounding_box')
 
             arcpy.management.CalculateField(points_null, 'WTR_NM_1',
                                             "'" + str(water_name) + "'", 'PYTHON')
-##
-##            # Select all the Test Points that intersect the bounding box that have WTR_NM_1
-##            # populated and WTR_NM_2 is null and the water name doesn't equal WTR_NM_1
-##            points_null_2 = arcpy.MakeFeatureLayer_management(
-##                self.outfolder + '\\FBS_Audit.gdb\\Test_Points', "points_null_2",
-##                "WTR_NM_1 IS NOT NULL AND WTR_NM_2 IS NULL AND WTR_NM_1 <> '" + water_name + "'")
-##            
-##            points_sel_2 = arcpy.SelectLayerByLocation_management(
-##                points_null_2, "INTERSECT", self.outfolder + '\\FBS_Audit.gdb\\bounding_box')
-##
-##            arcpy.management.CalculateField(points_null,
-##                                            'WTR_NM_2', "'" + str(water_name) + "'", 'PYTHON')            
-##
+
+            # Select all the Test Points that intersect the bounding box that have WTR_NM_1
+            # populated and WTR_NM_2 is null and the water name doesn't equal WTR_NM_1
+            points_null_2 = arcpy.MakeFeatureLayer_management(
+                self.outfolder + '\\FBS_Audit.gdb\\Test_Points', "points_null_2",
+                "WTR_NM_1 IS NOT NULL AND WTR_NM_2 IS NULL AND WTR_NM_1 <> '" + water_name + "'")
+
+            points_sel_2 = arcpy.SelectLayerByLocation_management(
+                points_null_2, "INTERSECT", self.outfolder + '\\FBS_Audit.gdb\\bounding_box')
+
+            arcpy.management.CalculateField(points_sel_2,
+                                            'WTR_NM_2', "'" + str(water_name) + "'", 'PYTHON')
+
             # Delete all the temporary layers and bounding_box
             arcpy.Delete_management("points_null")
             arcpy.Delete_management("points_null_2")
@@ -495,18 +495,26 @@ class FbsAudit:
         """Create a bounding box for the water name"""
         # Remove a bounding_box feature class if it already exists
         if arcpy.Exists(self.outfolder + '\\FBS_Audit.gdb\\bounding_box'):
-            arcpy.Delete_management(self.outfolder + '\\FBS_Audit.gdb\\bounding_box')        
+            arcpy.Delete_management(self.outfolder + '\\FBS_Audit.gdb\\bounding_box')
 
         # Select the cross sections for the current water_name
         if arcpy.Exists("xs_sel"):
             arcpy.Delete_management("xs_sel")
         xs_sel = arcpy.MakeFeatureLayer_management(self.cross_sections, "xs_sel",
                                                    "WTR_NM = '" + water_name + "'")
-        
+
+        # Simplify them in memory
+        if arcpy.Exists("in_memory//simple_xs"):
+            arcpy.Delete_management("in_memory//simple_xs")
+        if arcpy.Exists("in_memory//simple_xs_Pnt"):
+            arcpy.Delete_management("in_memory//simple_xs_Pnt")
+        simple_xs = arcpy.SimplifyLine_cartography(
+            xs_sel, "in_memory//simple_xs", "POINT_REMOVE", "100 Feet")
+
         # Create a temporary shapefile to hold each boundary
         if arcpy.Exists(self.outfolder + '\\FBS_Audit.gdb\\bounding_box_temp'):
             arcpy.Delete_management(self.outfolder + '\\FBS_Audit.gdb\\bounding_box_temp')
-            
+
         bounding_box_temp = arcpy.CreateFeatureclass_management(
             self.outfolder + '\\FBS_Audit.gdb', 'bounding_box_temp', 'POLYGON',
             spatial_reference=arcpy.Describe(self.cross_sections).spatialReference.factoryCode)
@@ -515,42 +523,33 @@ class FbsAudit:
         station_list = sorted(list(set([(row[0]) for row in arcpy.da.SearchCursor(xs_sel,
                                                                                   'STREAM_STN')])))
 
-        # TODO: Copy the cross sections, generalize, make the boundary polygon, remove the XS's
         # Create a polygon for every two cross sections and store them in the temporary shapefile
         def create_polygon(in_xs_path, station_1, station_2, out_fc):
             sel_station = str(station_1) + ", " + str(station_2)
-            print(water_name + " => " + sel_station)
+
             xs_stations = arcpy.MakeFeatureLayer_management(
                 in_xs_path, "xs_stations", "\"STREAM_STN\" IN (" + sel_station + ")")
 
             if arcpy.Exists("in_memory\\clip_boundary"):
                 arcpy.Delete_management("in_memory\\clip_boundary")
 
-            result = arcpy.GetCount_management(xs_stations)
-            print("\tSelected: {}".format(result[0]))
-                
             boundary = arcpy.MinimumBoundingGeometry_management(
                 xs_stations, "in_memory\\clip_boundary", "CONVEX_HULL", "LIST", "WTR_NM")
-            
+
             arcpy.Append_management(boundary, out_fc, "NO_TEST")
             arcpy.Delete_management("xs_stations")
             arcpy.Delete_management("in_memory\\clip_boundary")
 
         # Iterate through the stream station list sending every two stations to the
         # create_polygon function
-        for x in range(0, len(station_list) - 1):
-            create_polygon(xs_sel, station_list[x], station_list[x + 1], bounding_box_temp)
-
-
-        # TESTING
-        arcpy.CopyFeatures_management(self.outfolder + '\\FBS_Audit.gdb\\bounding_box_temp',
-                                      self.outfolder + '\\FBS_Audit.gdb\\bounding_box_' + water_name.replace(" ", "_"))
-
+        for station in range(0, len(station_list) - 1):
+            create_polygon(simple_xs, station_list[station],
+                           station_list[station + 1], bounding_box_temp)
 
         # Dissolve the features and remove the temporary shapefile
         if arcpy.Exists(self.outfolder + '\\FBS_Audit.gdb\\bounding_box'):
             arcpy.Delete_management(self.outfolder + '\\FBS_Audit.gdb\\bounding_box')
-            
+
         arcpy.Dissolve_management(
             bounding_box_temp,
             self.outfolder + '\\FBS_Audit.gdb\\bounding_box')
@@ -560,7 +559,8 @@ class FbsAudit:
 
     def generate_report(self):
         """Output Report"""
-        print("To be done")
+        # TODO: Generate a final report
+        pass
 
     def cleanup(self):
         """Cleanup any remaining items"""
@@ -585,6 +585,10 @@ class FbsAudit:
 
 
 if __name__ == "__main__":
+    # TODO: Add water name as a separate tool
+    # TODO: Create final report as separate tool
+    # TODO: Create tool to calculate differences separately
+    
     # Check for spatial analyst license
     if arcpy.CheckExtension("Spatial") == "Available":
         arcpy.CheckOutExtension("Spatial")
