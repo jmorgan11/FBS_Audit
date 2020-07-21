@@ -2,10 +2,17 @@
 from fbs_audit import FbsAudit
 
 # Get user input
+#-------------CLARK-----------------------------------------------------
 dem = r'D:\Tools\FBS_Audit\Test_Data_2\DEM\clark_.tif'
 db = r'D:\Tools\FBS_Audit\Test_Data_2\FBS_Audit_Test_2\Clark.gdb'
 outfolder = r'D:\Tools\FBS_Audit\Test_Data_2\FBS_Audit_Test_2\Output'
 wsel = r'D:\Tools\FBS_Audit\Test_Data_2\WSEL_Grid\WSE_01pct_SP.tif'
+
+###-------------Klamath-----------------------------------------------------
+##dem = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\Terrain\terrain.tif'
+##db = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\FBS_Audit_Development.gdb'
+##outfolder = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\Output'
+##wsel = r'D:\Tools\FBS_Audit\Test_Data\FBS_Audit_Development\WSEL\WSE_01pct.tif'
 
 # Create an instance of the class and run it
 print("Starting....\n")
@@ -42,7 +49,7 @@ print("Calculate Max/Min value")
 fbs_audit.add_ground_elevations_area()
 
 print("Adding Water Names to Test_Points")
-fbs_audit.assign_water_names()
+fbs_audit.assign_water_names_near()
 
 print("Cleanup")
 fbs_audit.cleanup()

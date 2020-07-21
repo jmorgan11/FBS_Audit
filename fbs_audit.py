@@ -248,8 +248,8 @@ class FbsAudit:
         test_points_lyr = arcpy.MakeFeatureLayer_management(test_points, "test_points_lyr")
 
         # Add the needed fields to Test_Points
-        arcpy.AddField_management(test_points_lyr, "WTR_NM_1", "TEXT", field_length=100)
-        arcpy.AddField_management(test_points_lyr, "WTR_NM_2", "TEXT", field_length=100)
+        # arcpy.AddField_management(test_points_lyr, "WTR_NM_1", "TEXT", field_length=100)
+        # arcpy.AddField_management(test_points_lyr, "WTR_NM_2", "TEXT", field_length=100)
         arcpy.AddField_management(test_points_lyr, "FldELEV", "FLOAT",
                                   field_precision=6, field_scale=2)
         arcpy.AddField_management(test_points_lyr, "MinElev", "FLOAT",
@@ -491,6 +491,53 @@ class FbsAudit:
             arcpy.Delete_management("points_null")
             arcpy.Delete_management("points_null_2")
 
+    def assign_water_names_near(self):
+        """Assigns water names to the Test Points based on a Near Table"""
+        # Remove the Near Table if it already exists
+        if arcpy.Exists(self.outfolder + '\\FBS_Audit.gdb\\Near_Table'):
+            arcpy.Delete_management(self.outfolder + '\\FBS_Audit.gdb\\Near_Table')
+
+        # Remove Test_Point layer if it exists
+        if arcpy.Exists('test_point_layer'):
+            arcpy.Delete_management('test_point_layer')
+            
+        # Create Test_Point layer
+        test_point_layer = arcpy.MakeFeatureLayer_management(
+            self.outfolder + '\\FBS_Audit.gdb\\Test_Points', 'test_point_layer')     
+
+        # Remove S_Profil_Balsn layer if it exists
+        if arcpy.Exists('profil_basln_layer'):
+            arcpy.Delete_management('profil_basln_layer')
+            
+        # Create S_Profil_Basln layer
+        profil_basln_layer = arcpy.MakeFeatureLayer_management(
+            self.profile_baselines, 'profil_basln_layer')                
+        
+        # Generate Near Table
+        arcpy.GenerateNearTable_analysis(test_point_layer, profil_basln_layer,
+                                         self.outfolder + '\\FBS_Audit.gdb\\Near_Table',
+                                         closest='CLOSEST', method='PLANAR')
+
+        # Remove Near_Table layer if it exists
+        if arcpy.Exists('near_table_layer'):
+            arcpy.Delete_management('near_table_layer')
+            
+        # Create Near_Table layer
+        near_table_layer = arcpy.MakeTableView_management(
+            self.outfolder + '\\FBS_Audit.gdb\\Near_Table', 'near_table_layer')
+
+        # Run Add Join Near Table to Test Points based on IN_FID
+        arcpy.JoinField_management(test_point_layer, 'OBJECTID', near_table_layer, 'IN_FID', ['IN_FID', 'NEAR_FID'])
+      
+        # Join S_Profil_Basln to Test Points based on NEAR_FID
+        arcpy.JoinField_management(test_point_layer, 'NEAR_FID', profil_basln_layer, 'OBJECTID', ['WTR_NM'])
+
+        # Remove the WTR_NM, IN_FID and NEAR_FID fields if they already exists
+        field_list = arcpy.ListFields(test_point_layer)
+        for field in field_list:
+            if str(field.name) in ['IN_FID', 'NEAR_FID']:
+                arcpy.DeleteField_management(test_point_layer, field.name)        
+       
     def create_bounding_box(self, water_name):
         """Create a bounding box for the water name"""
         # Remove a bounding_box feature class if it already exists
@@ -583,11 +630,16 @@ class FbsAudit:
         if arcpy.Exists(self.outfolder + '\\FBS_Audit.gdb\\bounding_box'):
             arcpy.Delete_management(self.outfolder + '\\FBS_Audit.gdb\\bounding_box')
 
+        # Delete the Near Table
+        if arcpy.Exists(self.outfolder + '\\FBS_Audit.gdb\\Near_Table'):
+            arcpy.Delete_management(self.outfolder + '\\FBS_Audit.gdb\\Near_Table')            
+
 
 if __name__ == "__main__":
     # TODO: Add water name as a separate tool
     # TODO: Create final report as separate tool
     # TODO: Create tool to calculate differences separately
+    # TODO: Add checks for empty tables
     
     # Check for spatial analyst license
     if arcpy.CheckExtension("Spatial") == "Available":
